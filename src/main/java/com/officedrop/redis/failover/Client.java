@@ -1,21 +1,31 @@
 package com.officedrop.redis.failover;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import redis.clients.jedis.BinaryClient;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.SortingParams;
+import redis.clients.jedis.Tuple;
+
 import com.officedrop.redis.failover.jedis.ClientFunction;
 import com.officedrop.redis.failover.jedis.JedisClient;
 import com.officedrop.redis.failover.jedis.JedisClientFactory;
 import com.officedrop.redis.failover.utils.CircularList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.BinaryClient;
-import redis.clients.jedis.SortingParams;
-import redis.clients.jedis.Tuple;
-
-import java.util.*;
 
 /**
- * User: Maurício Linhares
- * Date: 12/17/12
- * Time: 7:04 PM
+ * 该client与redis cluster中每个node的连接集合，包括一个master和n个slave。
+ * Every JedisClient just is a connection to one of cluster nodes.
+ * 
+ * 实现了redis cluster读写分离策略
+ * 
+ * slave选择策略：循环选择slave，读操作均匀分布在slave上
  */
 public class Client implements JedisClient, NodeManagerListener {
 
@@ -25,7 +35,9 @@ public class Client implements JedisClient, NodeManagerListener {
     private JedisClientFactory factory;
     private JedisClient master;
     private CircularList<JedisClient> slaves;
-
+    
+    private JedisClient current;
+    
     public Client(ClusterChangeEventSource nodeManager, JedisClientFactory factory) {
         this.factory = factory;
         this.nodeManager = nodeManager;
@@ -48,8 +60,14 @@ public class Client implements JedisClient, NodeManagerListener {
         this.updateSlaves();
     }
 
+    /**
+     * 断开与老master的链接
+     * 
+     * 新建链接
+     */
     private void updateMaster() {
-        this.quitMaster();
+        this.quitMaster();//断开与老master的链接
+        //新建链接
         this.master = this.factory.create(this.nodeManager.getLastClusterStatus().getMaster());
     }
 
@@ -65,10 +83,18 @@ public class Client implements JedisClient, NodeManagerListener {
         this.slaves = new CircularList<JedisClient>(slaveClients);
     }
 
+    /**
+     * 断开client与master的连接
+     */
     private void quitMaster() {
-        if (this.master != null) {
+        if (this.master != null && master.isConnected()) {
             try {
                 this.master.quit();
+            } catch (Exception e) {
+                log.error("Failed while closing the connection to master", e);
+            }
+            try{
+            	this.master.disconnect();
             } catch (Exception e) {
                 log.error("Failed while closing the connection to master", e);
             }
@@ -88,8 +114,14 @@ public class Client implements JedisClient, NodeManagerListener {
     private void quitSlaves() {
         if (this.slaves != null) {
             for (JedisClient slave : this.slaves) {
+            	if(!slave.isConnected()) continue;
                 try {
                     slave.quit();
+                } catch (Exception e) {
+                    log.error("Failed while closing the connection to the slave", e);
+                }
+                try{
+                	slave.disconnect();
                 } catch (Exception e) {
                     log.error("Failed while closing the connection to the slave", e);
                 }
@@ -97,6 +129,9 @@ public class Client implements JedisClient, NodeManagerListener {
         }
     }
 
+    /**
+     * 断开client与reids cluster的连接
+     */
     public String quit() {
         this.quitMaster();
         this.quitSlaves();
@@ -145,18 +180,17 @@ public class Client implements JedisClient, NodeManagerListener {
     }
 
     <R> R doAction( ClientType type, ClientFunction<R> function ) {
-        JedisClient client;
-
         switch( type ) {
             case SLAVE:
-                client = this.getSlave();
+            	current = this.getSlave();
+//                client = master;
                 break;
             default:
-                client = master;
+            	current = master;
                 break;
         }
 
-        return function.apply(client);
+        return function.apply(current);
     }
 
     @Override
@@ -1908,4 +1942,26 @@ public class Client implements JedisClient, NodeManagerListener {
             }
         });
     }
+
+	@Override
+	public Pipeline pipelined() {
+		return this.doAction( ClientType.MASTER, new ClientFunction<Pipeline>() {
+            @Override
+            public Pipeline apply(JedisClient client) {
+            	return client.pipelined();
+            }
+        });
+	}
+
+	@Override
+	public void disconnect() {
+		// TODO Auto-generated method stub
+		 throw new IllegalArgumentException("非法操作");
+	}
+	
+	@Override
+	public boolean isConnected() {
+		// TODO Auto-generated method stub
+		throw new IllegalArgumentException("不支持的操作");
+	}
 }

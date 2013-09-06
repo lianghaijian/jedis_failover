@@ -1,5 +1,22 @@
 package com.officedrop.redis.failover;
 
+import java.net.Inet4Address;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.officedrop.redis.failover.jedis.GenericJedisClientFactory;
 import com.officedrop.redis.failover.jedis.JedisClientFactory;
 import com.officedrop.redis.failover.strategy.FailoverSelectionStrategy;
@@ -11,45 +28,96 @@ import com.officedrop.redis.failover.utils.Function;
 import com.officedrop.redis.failover.utils.SleepUtils;
 import com.officedrop.redis.failover.utils.TransformationUtils;
 import com.officedrop.redis.failover.zookeeper.ZooKeeperNetworkClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.Inet4Address;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
- * User: Maurício Linhares
- * Date: 1/3/13
- * Time: 9:02 AM
+ * <pre>
+ * 消息订阅者
+ * 订阅：/redis_failover/manual_failover与/redis_failover/manager_node_state
+ * 订阅方式：pull
+ * 
+ * 间接消息发布者
+ * 发布：/redis_failover/nodes
+ * 方式：订阅/redis_failover/manager_node_state消息改变，如果node改变则间接发布消息
+ * 
+ * Failover中的消息			
+ * 			/redis_failover/nodes					master/slave信息
+ * 			/redis_failover/manual_failover			手动指定的master
+ * 			/redis_failover/manager_node_state		NodeManager收集的clients与cluster时时连接信息
+ * 
+ * 任务：nodeManager没5s
+ * 				检查/redis_failover/manager_node_state，有变化则触发ClusterStatusChanged事件
+ * 				检查/redis_failover/manual_failover
+ * 				如果master/slave角色有变化则重新配置cluster
+ * </pre>
  */
 public class NodeManager implements NodeListener, ClusterChangeEventSource {
 
     private static final Logger log = LoggerFactory.getLogger(NodeManager.class);
 
-    private final ZooKeeperClient zooKeeperClient;
-    private final Collection<HostConfiguration> redisServers;
-    private final JedisClientFactory factory;
-    private final ExecutorService threadPool;
-    private final Set<Node> nodes = new HashSet<Node>();
-    private final FailoverSelectionStrategy failoverStrategy;
-    private final FailureDetectionStrategy failureDetectionStatery;
-    private final long nodeSleepTimeout;
-    private final int nodeRetries;
-    private final String nodeName;
+    private ZooKeeperClient zooKeeperClient;
+    
+    //用户指定的redis server，该framework操作发生在这些server间
+    private Collection<HostConfiguration> redisServers; 
+    private JedisClientFactory factory;
+    private ExecutorService threadPool;
+    //对应redisServer
+    private Set<Node> nodes = new HashSet<Node>();
+    private FailoverSelectionStrategy failoverStrategy;
+    private FailureDetectionStrategy failureDetectionStatery;
+    private long nodeSleepTimeout;
+    private int nodeRetries;
+    private String nodeName/*NodeManager标识*/;
     private volatile boolean running;
-    private volatile ClusterStatus lastClusterStatus;
+    private volatile ClusterStatus lastClusterStatus;//对应/redis_failover/nodes
     private volatile Map<HostConfiguration, NodeState> currentNodesState;
+    //对应 /redis_failover/manager_state_node
     private volatile Map<String, Map<HostConfiguration, NodeState>> lastNodesData;
     private final Object mutex = new Object();
     private final List<NodeManagerListener> listeners = new CopyOnWriteArrayList<NodeManagerListener>();
+    //
     private final Set<HostConfiguration> reportedNodes = Collections.synchronizedSet(new HashSet<HostConfiguration>());
-    private final boolean closeZookeeper;
+    private boolean closeZookeeper;
 
-    public NodeManager(
+    public NodeManager(String zooKeeperUrl, String redisUrl){
+    	if(redisUrl==null) 
+    		throw new NullPointerException("Redis url can't be null.");
+    	
+    	Collection<HostConfiguration> redisCluster = new ArrayList<HostConfiguration>();
+    	String[] redisServers = redisUrl.split(",");
+    	for(String redis : redisServers){
+    		String[] host = redis.split(":");
+    		redisCluster.add(new HostConfiguration(host[0], Integer.valueOf(host[1])));
+    	}
+    	
+    	init(
+                new ZooKeeperNetworkClient(zooKeeperUrl),
+                redisCluster,
+                GenericJedisClientFactory.INSTANCE,
+                DaemonThreadPoolFactory.newCachedPool(),
+                LatencyFailoverSelectionStrategy.INSTANCE,
+                SimpleMajorityStrategy.INSTANCE,
+                5000,
+                3,
+                true
+        );
+    	
+    }
+    
+    public NodeManager(String zooKeeperUrl, Collection<HostConfiguration> redisServers) {
+        init(
+                new ZooKeeperNetworkClient(zooKeeperUrl),
+                redisServers,
+                GenericJedisClientFactory.INSTANCE,
+                DaemonThreadPoolFactory.newCachedPool(),
+                LatencyFailoverSelectionStrategy.INSTANCE,
+                SimpleMajorityStrategy.INSTANCE,
+                5000,
+                3,
+                true
+        );
+    }
+    
+    private void init(
             ZooKeeperClient zooKeeperClient,
             Collection<HostConfiguration> redisServers,
             JedisClientFactory factory,
@@ -96,20 +164,6 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
                 }
             }
         });
-    }
-
-    public NodeManager(String zooKeeperUrl, Collection<HostConfiguration> redisServers) {
-        this(
-                new ZooKeeperNetworkClient(zooKeeperUrl),
-                redisServers,
-                GenericJedisClientFactory.INSTANCE,
-                DaemonThreadPoolFactory.newCachedPool(),
-                LatencyFailoverSelectionStrategy.INSTANCE,
-                SimpleMajorityStrategy.INSTANCE,
-                5000,
-                3,
-                true
-        );
     }
 
     public ClusterStatus getLastClusterStatus() {
@@ -177,6 +231,11 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
 
     }
 
+    /**
+     * 回掉函数
+     * 触发事件：master slave角色发生变化
+     * @param clusterStatus
+     */
     private void clusterStatusChanged(ClusterStatus clusterStatus) {
         synchronized (this.mutex) {
             if (!this.zooKeeperClient.hasLeadership()) {
@@ -185,6 +244,10 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
         }
     }
 
+    /**
+     * 
+     * @param clusterStatus
+     */
     private void fireClusterStatusChanged(ClusterStatus clusterStatus) {
 
         ClusterStatus previousClusterStatus = this.lastClusterStatus;
@@ -216,6 +279,8 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
                 throw new IllegalArgumentException("There has to be a master before setting the cluster configuration");
             }
 
+            //发布消息/redis_failover/nodes
+            //订阅/redis_failover/manager_node_state，触发事件时，如果node改变则间接发布消息
             this.zooKeeperClient.setClusterData(clusterStatus);
         }
     }
@@ -240,6 +305,12 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
         }
     }
 
+    /**
+     * nodeManager没5s
+     * 				检查/redis_failover/nodes，有变化则触发ClusterStatusChanged事件
+     * 				检查/redis_failover/manual_failover
+     * 				如果master/slave角色有变化则重新配置cluster
+     */
     public void start() {
 
         synchronized (this.mutex) {
@@ -382,6 +453,9 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
         }
     }
 
+    /**
+     * 重新配置master/slave
+     */
     public void assertMasterIsConfigured() {
         List<Node> availableNodes = new ArrayList<Node>();
 
@@ -463,6 +537,11 @@ public class NodeManager implements NodeListener, ClusterChangeEventSource {
         }
     }
 
+    /**
+     * 写入redis cluster状态写入zookeeper
+     * 
+     * 节点：/redis_failover/manager_node_state/${hostname}
+     */
     private void publishNodeState() {
 
         Map<HostConfiguration, NodeState> states = TransformationUtils.toNodeStates(this.nodes);

@@ -6,9 +6,7 @@ import com.officedrop.redis.failover.NodeState;
 import java.util.Collection;
 
 /**
- * User: Maurício Linhares
- * Date: 1/5/13
- * Time: 5:00 PM
+ * 节点不可用策略
  */
 public interface FailureDetectionStrategy {
 

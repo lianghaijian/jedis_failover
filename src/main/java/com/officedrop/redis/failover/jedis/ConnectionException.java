@@ -7,7 +7,9 @@ package com.officedrop.redis.failover.jedis;
  */
 public class ConnectionException extends RuntimeException {
 
-    public ConnectionException(final Throwable cause) {
+    private static final long serialVersionUID = -2023072245523122950L;
+
+	public ConnectionException(final Throwable cause) {
         super(cause);
     }
 

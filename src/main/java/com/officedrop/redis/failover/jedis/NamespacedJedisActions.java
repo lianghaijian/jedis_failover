@@ -1,6 +1,7 @@
 package com.officedrop.redis.failover.jedis;
 
 import redis.clients.jedis.BinaryClient;
+import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.SortingParams;
 import redis.clients.jedis.Tuple;
 
@@ -512,4 +513,22 @@ public class NamespacedJedisActions implements JedisActions {
     public Long rpushx(final String key, final String string) {
         return this.actions.rpushx(this.namespaceKey(key), string);
     }
+
+	@Override
+	public Pipeline pipelined() {
+		// TODO Auto-generated method stub
+		throw new IllegalArgumentException("不支持的操作");
+	}
+
+	@Override
+	public void disconnect() {
+		// TODO Auto-generated method stub
+		throw new IllegalArgumentException("不支持的操作");
+	}
+
+	@Override
+	public boolean isConnected() {
+		// TODO Auto-generated method stub
+		throw new IllegalArgumentException("不支持的操作");
+	}
 }

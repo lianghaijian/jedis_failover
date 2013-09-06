@@ -7,8 +7,9 @@ package com.officedrop.redis.failover.utils;
  */
 public class JsonBinderException extends IllegalArgumentException {
 
-    public JsonBinderException( Throwable t ) {
+	private static final long serialVersionUID = -3153411780299441590L;
+
+	public JsonBinderException( Throwable t ) {
         super( t );
     }
-
 }

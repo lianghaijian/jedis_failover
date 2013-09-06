@@ -1,5 +1,22 @@
 package com.officedrop.redis.failover;
 
+import java.io.Closeable;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import junit.framework.Assert;
+
+import org.apache.commons.io.IOUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.netflix.curator.test.TestingServer;
 import com.officedrop.redis.failover.jedis.GenericJedisClientFactory;
 import com.officedrop.redis.failover.redis.RedisServer;
@@ -9,17 +26,6 @@ import com.officedrop.redis.failover.utils.Function;
 import com.officedrop.redis.failover.utils.SleepUtils;
 import com.officedrop.redis.failover.utils.ThreadPool;
 import com.officedrop.redis.failover.zookeeper.ZooKeeperNetworkClient;
-import junit.framework.Assert;
-import org.apache.commons.io.IOUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.Closeable;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * User: Maurício Linhares

@@ -7,7 +7,9 @@ package com.officedrop.redis.failover.zookeeper;
  */
 public class ZooKeeperException extends IllegalStateException {
 
-    public ZooKeeperException( Throwable t ) {
+    private static final long serialVersionUID = 1L;
+
+	public ZooKeeperException( Throwable t ) {
         super(t);
     }
 

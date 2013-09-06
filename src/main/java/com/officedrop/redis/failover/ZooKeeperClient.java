@@ -1,7 +1,6 @@
 package com.officedrop.redis.failover;
 
 import java.io.Closeable;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
