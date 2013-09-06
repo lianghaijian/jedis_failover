@@ -1,13 +1,49 @@
 # jedis_failover - a failover solution for redis server clusters
+Master Branch：https://github.com/officedrop/jedis_failover
 
-Master分支地址：https://github.com/officedrop/jedis_failover
-次分支对Master加了一些注释，并修改了一个比较严重的bug
-bug信息：
-涉及类：com.officedrop.redis.failover.jedis.CommonsJedisPool
-bug表现：netstat查看过多的CLOSE_WAIT状态的TCP连接
-原因：连接池关闭连接的时候，client端没有关闭。
+Update log:
+1 add some note in Chinese
+2 support redis pipeline
+3 fix a fatal bug
+	
+bug info:
+	presentation：too many CLOSE_WAIT TCP connections
+	cause: socket in client doesn't close when pool collects connection object.
+	classes related: com.officedrop.redis.failover.Client
 
-评价：代码优雅，failover机制简单、有效，比较容易掌握。
+	code related:
+		private void quitMaster() {
+		if (this.master != null && master.isConnected()) {
+		    try {
+			this.master.quit();
+		    } catch (Exception e) {
+			log.error("Failed while closing the connection to master", e);
+		    }
+		    try{
+			this.master.disconnect();
+		    } catch (Exception e) {
+			log.error("Failed while closing the connection to master", e);
+		    }
+		}
+	    }
+
+		private void quitSlaves() {
+			if (this.slaves != null) {
+			    for (JedisClient slave : this.slaves) {
+				if(!slave.isConnected()) continue;
+				try {
+				    slave.quit();
+				} catch (Exception e) {
+				    log.error("Failed while closing the connection to the slave", e);
+				}
+				try{
+					slave.disconnect();
+				} catch (Exception e) {
+				    log.error("Failed while closing the connection to the slave", e);
+				}
+			    }
+			}
+		    }
 
 
 This plugin is an implementation of the behaviour implemented originally at the [redis_failover](https://github.com/ryanlecompte/redis_failover)
