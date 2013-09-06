@@ -1,5 +1,15 @@
 # jedis_failover - a failover solution for redis server clusters
 
+Master分支地址：https://github.com/officedrop/jedis_failover
+次分支对Master加了一些注释，并修改了一个比较严重的bug
+bug信息：
+涉及类：com.officedrop.redis.failover.jedis.CommonsJedisPool
+bug表现：netstat查看过多的CLOSE_WAIT状态的TCP连接
+原因：连接池关闭连接的时候，client端没有关闭。
+
+评价：代码优雅，failover机制简单、有效，比较容易掌握。
+
+
 This plugin is an implementation of the behaviour implemented originally at the [redis_failover](https://github.com/ryanlecompte/redis_failover)
 Ruby gem. It's main goal is to make your redis cluster to be highly available by automatically switching over the
  master status to a server that is available once the real master goes down or removing slaves that are not currently
