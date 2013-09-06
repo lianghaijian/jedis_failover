@@ -1,3 +1,6 @@
 jedis_failover.iml
-
 /target/
+.project
+.classpath
+.get/
+.settings/
