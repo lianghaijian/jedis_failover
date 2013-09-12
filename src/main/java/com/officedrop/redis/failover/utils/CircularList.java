@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * 循环读列表
  * User: Maurício Linhares
  * Date: 12/19/12
  * Time: 2:12 PM

@@ -1,6 +1,5 @@
 package com.officedrop.redis.failover;
 
-import java.util.Map;
 
 /**
  * User: Maurício Linhares

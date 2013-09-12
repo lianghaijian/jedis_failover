@@ -9,9 +9,6 @@ import redis.clients.jedis.JedisPoolConfig;
 import java.util.Collection;
 
 /**
- * User: Maurício Linhares
- * Date: 1/14/13
- * Time: 9:11 AM
  */
 public class JedisPoolBuilder {
 
@@ -21,9 +18,9 @@ public class JedisPoolBuilder {
 
     public JedisPoolBuilder() {
         this.poolConfig.setMaxIdle(1);
-        this.poolConfig.setTestWhileIdle(true);
+//        this.poolConfig.setTestWhileIdle(true);
         this.poolConfig.setTestOnBorrow(true);
-        this.poolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_GROW);
+        this.poolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
     }
 
     public JedisPoolBuilder withFailoverConfiguration( String zooKeeperHosts, Collection<HostConfiguration> redisServers) {
@@ -32,7 +29,7 @@ public class JedisPoolBuilder {
         nodeManager.start();
 
         try {
-            nodeManager.waitUntilMasterIsAvailable(10000);
+            nodeManager.waitUntilMasterIsAvailable(10000); 
         } catch ( Exception e ) {
             nodeManager.stop();
             throw new IllegalStateException("Node manager could not be started", e);
@@ -78,7 +75,8 @@ public class JedisPoolBuilder {
         return this;
     }
 
-    public JedisPool build() {
+    @SuppressWarnings("unchecked")
+	public JedisPoolExecutor build() {
 
         CommonsJedisPool pool = new CommonsJedisPool(this.jedisFactory, this.poolConfig);
 

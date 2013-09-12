@@ -1,22 +1,26 @@
 package com.officedrop.redis.failover.jedis;
 
-import com.officedrop.redis.failover.utils.Action1;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.apache.commons.pool.PoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.JedisPoolConfig;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.Pipeline;
+
+import com.officedrop.redis.failover.utils.Action1;
+
 
 /**
  * User: Maurício Linhares
  * Date: 1/8/13
  * Time: 4:37 PM
  */
-public class CommonsJedisPool implements PoolableObjectFactory, JedisPool {
+public class CommonsJedisPool implements PoolableObjectFactory, JedisPoolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(CommonsJedisPool.class);
 
@@ -56,10 +60,10 @@ public class CommonsJedisPool implements PoolableObjectFactory, JedisPool {
 
         try {
             jedis = (JedisActions) this.pool.borrowObject();
-            return action.execute( jedis );
-        } catch ( Exception e ) {
-            throw new RuntimeException(e);
-        } finally {
+			return action.execute( jedis );
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} finally {
             if ( jedis != null ) {
                 try {
                     this.pool.returnObject(jedis);
@@ -68,6 +72,30 @@ public class CommonsJedisPool implements PoolableObjectFactory, JedisPool {
                 }
             }
         }
+        
+    }
+    
+    @Override
+    public <T> T withJedisPipeline(JedisPipelineResultFunction<T> action) {
+
+        JedisActions jedis = null;
+
+        try {
+            jedis = (JedisActions) this.pool.borrowObject();
+            Pipeline pipeline = jedis.pipelined();
+			return action.execute( pipeline );
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} finally {
+            if ( jedis != null ) {
+                try {
+                    this.pool.returnObject(jedis);
+                } catch ( Exception e ) {
+                    log.error("Failed to return object to pool", e);
+                }
+            }
+        }
+        
     }
 
     @Override
@@ -77,17 +105,14 @@ public class CommonsJedisPool implements PoolableObjectFactory, JedisPool {
 
     @Override
     public void destroyObject(final Object obj) throws Exception {
-        try {
-
-            if ( obj instanceof JedisActions ) {
-                JedisActions actions = (JedisActions) obj;
-                actions.quit();
+        if(obj instanceof JedisActions){
+        	JedisActions actions = (JedisActions) obj;
+        	try {
+            	actions.quit();
+            } catch (Exception e) {
+            	log.error("Failed to destroy jedis object, reids quit fails.", e);
             }
-
-        } catch ( Exception e ) {
-            log.error("Failed to destroy jedis object", e);
         }
-
     }
 
     @Override
