@@ -23,28 +23,28 @@ public class JedisPoolBuilderTest {
 
     private static final Logger log = LoggerFactory.getLogger(JedisPoolBuilderTest.class);
 
-    JedisPoolExecutor pool = new JedisPoolBuilder()
+    JedisPool pool = new JedisPoolBuilder()
             .withFailoverConfiguration(
-                    "192.168.1.48:2181",
-                    Arrays.asList(new HostConfiguration("192.168.1.48", 6379), new HostConfiguration("192.168.1.48", 6380),
-                    new HostConfiguration("192.168.1.48", 6381))).build();
+                    "localhost:2838",
+                    Arrays.asList(new HostConfiguration("localhost", 7000), new HostConfiguration("localhost", 7001)))
+            .build();
 
     @Test
     public void testRealClientFailsOverToNewMaster() throws Exception {
 
         TestingServer zooKeeper = new TestingServer();
 
-        RedisServer server1 = new RedisServer("192.168.1.224", 6379);
+        RedisServer server1 = new RedisServer("localhost", 8000);
         server1.start();
 
-        RedisServer server2 = new RedisServer("192.168.1.224", 6380);
+        RedisServer server2 = new RedisServer("localhost", 8001);
         server2.setMasterHost(server1.getHostConfiguration().getHost());
         server2.setMasterPort(server1.getPort());
         server2.start();
 
-        final JedisPoolExecutor pool = new JedisPoolBuilder()
+        final JedisPool pool = new JedisPoolBuilder()
                 .withFailoverConfiguration(
-                		zooKeeper.getConnectString(),
+                        zooKeeper.getConnectString(),
                         Arrays.asList( server1.getHostConfiguration(), server2.getHostConfiguration()))
                 .build();
 
@@ -92,15 +92,15 @@ public class JedisPoolBuilderTest {
 
         TestingServer zooKeeper = new TestingServer();
 
-        RedisServer server1 = new RedisServer("192.168.1.224", 6379);
+        RedisServer server1 = new RedisServer("localhost", 8000);
         server1.start();
 
-        RedisServer server2 = new RedisServer("192.168.1.224", 6380);
+        RedisServer server2 = new RedisServer("localhost", 8001);
         server2.setMasterHost(server1.getHostConfiguration().getHost());
         server2.setMasterPort(server1.getPort());
         server2.start();
 
-        final JedisPoolExecutor pool = new JedisPoolBuilder()
+        final JedisPool pool = new JedisPoolBuilder()
                 .withFailoverConfiguration(
                         zooKeeper.getConnectString(),
                         Arrays.asList( server1.getHostConfiguration(), server2.getHostConfiguration()))

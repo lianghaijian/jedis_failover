@@ -7,9 +7,7 @@ package com.officedrop.redis.failover;
  */
 public class NodeManagerException extends IllegalStateException {
 
-    private static final long serialVersionUID = 115839769854881868L;
-
-	public NodeManagerException( String message ) {
+    public NodeManagerException( String message ) {
         super(message);
     }
 

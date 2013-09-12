@@ -9,11 +9,6 @@ import com.officedrop.redis.failover.HostConfiguration;
  */
 public interface JedisClientFactory {
 
-	/**
-	 * 
-	 * @param configuration master
-	 * @return client to redis master
-	 */
     public JedisClient create( HostConfiguration configuration  );
 
 }

@@ -1,5 +1,10 @@
 package com.officedrop.redis.failover.redis;
 
+import com.officedrop.redis.failover.HostConfiguration;
+import com.officedrop.redis.failover.utils.Action1;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -9,12 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.officedrop.redis.failover.HostConfiguration;
-import com.officedrop.redis.failover.utils.Action1;
 
 /**
  * User: Maurício Linhares

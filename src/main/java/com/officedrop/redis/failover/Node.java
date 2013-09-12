@@ -14,21 +14,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 
- * 消息发布者
- * 消息：/redis_failover/manager_node_state
- * 方式：每5s探测一次node状态变化，如果有变化则发布。
- * 
- * 
- * Member of redis cluster
- * 
- * 持续探测并维持一个client与node的连接状态。
+ * User: Maurício Linhares
+ * Date: 12/24/12
+ * Time: 6:22 PM
  */
 public class Node {
 
     private static final Logger log = LoggerFactory.getLogger(Node.class);
 
-    private JedisActions client;//a connection to the node
+    private JedisActions client;
     private volatile int currentErrorCount = 0;
     private volatile boolean shutdown;
     private final long sleepDelay;
@@ -37,7 +31,7 @@ public class Node {
     private final HostConfiguration hostConfiguration;
     private final JedisClientFactory factory;
     private final ReentrantLock lock = new ReentrantLock();
-    private volatile NodeState currentState;//一个client与该node的连接状态
+    private volatile NodeState currentState;
 
     public Node(HostConfiguration hostConfiguration, JedisClientFactory factory, long sleepDelay, int maxErrors) {
         this.hostConfiguration = hostConfiguration;
@@ -64,14 +58,6 @@ public class Node {
         return this.currentState;
     }
 
-    /**
-     * 每个client每5s发送一次心跳包到该client连接的node，
-     * 
-     * 获得该节点的状态，如果有变化，则写入/redis_failover/manager_node_state/${hostname}
-     * 
-     * 节点状态变化包括：	该client与该node的连接是否断开
-     * 					该client到该node的ping值
-     */
     public void start() {
         this.shutdown = false;
 

@@ -1,7 +1,9 @@
 package com.officedrop.redis.failover;
 
 /**
- * 一个client与一个node的连接状态
+ * User: Maurício Linhares
+ * Date: 1/3/13
+ * Time: 2:47 PM
  */
 public class NodeState {
 

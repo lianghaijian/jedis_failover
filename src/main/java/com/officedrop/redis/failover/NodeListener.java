@@ -8,7 +8,6 @@ package com.officedrop.redis.failover;
 public interface NodeListener {
 
     public void nodeIsOnline( Node node, long latency );
-    
     public void nodeIsOffline( Node node, Exception e );
 
 }

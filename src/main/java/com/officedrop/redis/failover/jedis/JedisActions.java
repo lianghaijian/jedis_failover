@@ -1,7 +1,6 @@
 package com.officedrop.redis.failover.jedis;
 
 import redis.clients.jedis.JedisCommands;
-import redis.clients.jedis.Pipeline;
 
 /**
  * User: Maurício Linhares
@@ -21,11 +20,5 @@ public interface JedisActions extends JedisCommands {
     public String slaveofNoOne();
 
     public String info();
-    
-    public Pipeline pipelined();
-    
-    public void disconnect();
-    
-    public boolean isConnected();
 
 }

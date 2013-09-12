@@ -6,9 +6,9 @@ import com.officedrop.redis.failover.NodeState;
 import java.util.Collection;
 
 /**
- * 节点不可用策略
- * 
- * 超过一半的client连接该node失败，则该node为unavailable
+ * User: Maurício Linhares
+ * Date: 1/5/13
+ * Time: 5:02 PM
  */
 public class SimpleMajorityStrategy implements FailureDetectionStrategy {
 
