@@ -20,7 +20,7 @@ public class JedisPoolBuilder {
         this.poolConfig.setMaxIdle(1);
 //        this.poolConfig.setTestWhileIdle(true);
         this.poolConfig.setTestOnBorrow(true);
-        this.poolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
+        this.poolConfig.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_GROW);
     }
 
     public JedisPoolBuilder withFailoverConfiguration( String zooKeeperHosts, Collection<HostConfiguration> redisServers) {
