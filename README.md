@@ -1,4 +1,4 @@
-# jedis_failover - a failover solution for redis server clusters
+# Jedis 故障自动切换解决方案
 
 This plugin is an implementation of the behaviour implemented originally at the [redis_failover](https://github.com/ryanlecompte/redis_failover)
 Ruby gem. It's main goal is to make your redis cluster to be highly available by automatically switching over the
